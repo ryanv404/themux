@@ -3,7 +3,7 @@ name = "themux"
 version = "0.1.0"
 edition = "2021"
 authors = ["ryanv404"]
-description = "CLI app that sets the color theme in Termux."
+description = "CLI app for setting the color theme in Termux."
 
 [dependencies]
 bincode = "1.3.3"
