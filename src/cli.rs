@@ -8,10 +8,10 @@ const TERMUX_COLORS: &'static str = "/data/data/com.termux/files/home/.termux/co
 const USAGE_MSG: &'static str = "\
     Usage: themux [OPTION]\n\n\
     Options:\n    \
-    	-d, --data    Print color values for all themes.\n    \
+    	-d, --data    Print the default color values for all themes.\n    \
     	-h, --help    Print this help message.\n    \
-    	-l, --list    List available themes.\n    \
-    	-s, --select  Select a new theme.\n";
+    	-l, --list    List all available themes.\n    \
+    	-s, --select  Launch the theme selector.\n";
 
 pub fn handle_cli_opts() -> ExitCode {
 	let mut args = env::args();
