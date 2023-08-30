@@ -5,8 +5,8 @@ use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
+use bincode::{Encode, Decode};
 use inquire::{error::InquireError, Select};
-use serde::Deserialize;
 use terminal_size::{Width, Height, terminal_size};
 
 // Get the terminal's size or default to sensible values
@@ -14,24 +14,22 @@ fn get_terminal_size() -> (usize, usize) {
     let size = terminal_size();
     match size {
         Some((Width(w), Height(h))) => (w.into(), h.into()),
-        _ => (80, 10)
+        _ => (80, 12)
     }
 }
 
-#[derive(Deserialize)]
-pub struct Themes {
-    pub data: BTreeMap<String, Theme>,
-}
+#[derive(Encode, Decode)]
+pub struct Themes(BTreeMap<String, Theme>);
 
 impl Themes {
-    #[allow(dead_code)]
-	fn new() -> Self {
-		Self { data: BTreeMap::new() }
-	}
-
 	pub fn init() -> Self {
         let bytes = include_bytes!("themes.bin");
-        let themes: Self = bincode::deserialize(bytes).unwrap();
+
+        let config = bincode::config::standard();
+        let (themes, _): (Themes, usize) = bincode::decode_from_slice(&bytes[..], config).unwrap();
+
+        assert_eq!(themes.0.len(), 247);
+
         themes
 	}
 
@@ -39,10 +37,9 @@ impl Themes {
         let (width, _) = get_terminal_size();
         let mut line_len = 0;
 
-        // From testing, 2957 is the final output string length
-        let mut output = String::with_capacity(3000);
+        let mut output = String::new();
 
-        for name in self.data.keys() {
+        for name in self.0.keys() {
             let name = format!("{}, ", name);
 
             let name_len = name.len();
@@ -63,7 +60,7 @@ impl Themes {
 
     pub fn get_selection(&self) -> Result<(String, Theme), &str> {
         let themes = Themes::init();
-        let options = themes.data.keys().collect::<Vec<&String>>();
+        let options = themes.0.keys().collect::<Vec<&String>>();
 
         let (_, mut height) = get_terminal_size();
         height -= 3; // Adjust available height due to prompt and help message.
@@ -74,7 +71,7 @@ impl Themes {
             .prompt();
 
         if let Ok(name) = res {
-            match themes.data.get(name) {
+            match themes.0.get(name) {
                 Some(theme) => Ok((name.to_string(), theme.clone())),
                 None => Err("Unable to locate the selected theme.")
             }
@@ -88,7 +85,7 @@ impl fmt::Display for Themes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output: Vec<String> = vec![];
 
-        for (name, theme) in &self.data {
+        for (name, theme) in &self.0 {
             output.push(format!("[{}]\n{}", name, theme));
         }
 
@@ -96,11 +93,8 @@ impl fmt::Display for Themes {
     }
 }
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Encode, Decode, Clone)]
 pub struct Theme {
-	foreground: Rgb,
-    background: Rgb,
-    cursor:     Rgb,
 	color0:     Rgb,
 	color1:     Rgb,
 	color2:     Rgb,
@@ -117,14 +111,12 @@ pub struct Theme {
 	color13:    Rgb,
 	color14:    Rgb,
 	color15:    Rgb,
+    background: Rgb,
+	foreground: Rgb,
+    cursor:     Rgb,
 }
 
 impl Theme {
-    #[allow(dead_code)]
-    fn new() -> Self {
-        Default::default()
-    }
-
     pub fn to_file_format(&self, name: &str) -> String {
         format!("\
             #===============================================================\n\
@@ -138,8 +130,7 @@ impl Theme {
             name, self.color0, self.color1, self.color2, self.color3, self.color4,
             self.color5, self.color6, self.color7, self.color8, self.color9,
             self.color10, self.color11, self.color12, self.color13, self.color14,
-            self.color15, self.cursor, self.foreground, self.background 
-            // TODO: Background and cursor colors are swapped in themes.bin
+            self.color15, self.background, self.foreground, self.cursor
         )
     }
 }
@@ -151,27 +142,19 @@ impl fmt::Display for Theme {
                    background: {},\n\
                    colors: [{}, {}, {}, {}, {}, {}, {}, {},\n         \
                             {}, {}, {}, {}, {}, {}, {}, {}]",
-			self.background, self.foreground, self.cursor, self.color0,
+			self.cursor, self.foreground, self.background, self.color0,
 			self.color1, self.color2, self.color3, self.color4, self.color5,
 			self.color6, self.color7, self.color8, self.color9, self.color10,
 			self.color11, self.color12, self.color13, self.color14, self.color15
-            // TODO: Background and cursor colors are swapped in themes.bin
 		)
 	}
 }
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Encode, Decode, Clone)]
 struct Rgb {
     r: u8,
     g: u8,
     b: u8,
-}
-
-impl Rgb {
-    #[allow(dead_code)]
-	fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
-	}
 }
 
 impl FromStr for Rgb {

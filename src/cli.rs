@@ -8,7 +8,7 @@ const TERMUX_COLORS: &'static str = "/data/data/com.termux/files/home/.termux/co
 const USAGE_MSG: &'static str = "\
     Usage: themux [OPTION]\n\n\
     Options:\n    \
-    	-d, --data    Print all themes data.\n    \
+    	-d, --data    Print color values for all themes.\n    \
     	-h, --help    Print this help message.\n    \
     	-l, --list    List available themes.\n    \
     	-s, --select  Select a new theme.\n";
