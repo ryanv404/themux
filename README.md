@@ -12,6 +12,6 @@ Usage: themux [OPTION]
 Options:
 	-d, --data    Print color values for all themes.
 	-h, --help    Print this help message.
-	-l, --list    List available themes.
-	-s, --select  Select a new theme.
+	-l, --list    List all available themes.
+	-s, --select  Launch the theme selector TUI.
 ```
