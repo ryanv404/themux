@@ -1,4 +1,9 @@
-// main.rs: Themux
+// main.rs: Themux color theme selection tool.
+
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::cargo)]
 
 mod cli;
 mod data;

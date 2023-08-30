@@ -3,7 +3,12 @@ name = "themux"
 version = "0.1.0"
 edition = "2021"
 authors = ["ryanv404"]
-description = "CLI app for setting the color theme in Termux."
+description = "Utility for setting the color theme in a Termux terminal."
+repository = "https://github.com/ryanv404/themux"
+readme = "README.md"
+keywords = ["colors", "themes", "terminal", "termux"]
+categories = ["command-line-utilities"]
+license = "MIT"
 
 [dependencies]
 bincode = "2.0.0-rc.3"
