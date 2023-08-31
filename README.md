@@ -8,11 +8,11 @@ list.
 ## Usage
 
 ```
-Usage: themux [OPTION]
+Usage:
+    themux
+    themux [OPTION]
 
 Options:
     -h, --help    Print this help message.
-    -l, --list    List all available themes.
-    -t, --theme   Launch the theme selector.
-    -v, --values  Print the default color values for all themes.
+    -t, --themes  List the available themes.
 ```

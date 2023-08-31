@@ -1,15 +1,24 @@
-// main.rs: Themux color theme selection tool.
+// main.rs: Terminal color theme selection tool.
 
 #![deny(clippy::all)]
 #![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
+
+use std::{env, process::ExitCode};
 
 mod cli;
 mod data;
+mod tui;
 
-use crate::cli::handle_cli_opts;
+use crate::cli::Cli;
+use crate::tui::Tui;
 
-fn main() -> std::process::ExitCode {
-    handle_cli_opts()
+fn main() -> ExitCode {
+    let mut args = env::args();
+
+    match args.len() {
+        1 => Tui::run(),
+        2 => Cli::parse_opts(&mut args),
+        _ => Cli::fail("Invalid number of arguments."),
+    }
 }

@@ -1,22 +1,16 @@
 // data.rs: I/O utilities, color theme data structures
 
-use std::{collections::BTreeMap, fmt, num::ParseIntError, str::FromStr};
+use std::{collections::BTreeMap, fmt, fs, num::ParseIntError, process::ExitCode, str::FromStr};
 
 use bincode::Decode;
-use inquire::{error::InquireError, Select};
-use terminal_size::{terminal_size, Height, Width};
 
-// Get the terminal's size or default to sensible values
-fn get_terminal_size() -> (usize, usize) {
-    let size = terminal_size();
-    match size {
-        Some((Width(w), Height(h))) => (w.into(), h.into()),
-        _ => (60, 10),
-    }
-}
+use crate::tui::Tui;
+
+// Standard location of the Termux color settings file.
+const TERMUX_CONFIG: &str = "/data/data/com.termux/files/home/.termux/colors.properties";
 
 #[derive(Decode)]
-pub struct Themes(BTreeMap<String, Theme>);
+pub struct Themes(pub BTreeMap<String, Theme>);
 
 impl Themes {
     pub fn init() -> Self {
@@ -30,15 +24,16 @@ impl Themes {
         themes
     }
 
-    pub fn list_themes(&self) {
-        let (width, _) = get_terminal_size();
+    pub fn list() -> ExitCode {
+        let (width, _) = Tui::get_size();
+
+        let themes = Self::init();
+        let max_idx = themes.0.len() - 1;
 
         let mut line_len = 0;
-        let max_idx = self.0.len() - 1;
-
         let mut output = String::new();
 
-        for (idx, key) in self.0.keys().enumerate() {
+        for (idx, key) in themes.0.keys().enumerate() {
             let mut name = key.clone();
 
             if idx != max_idx {
@@ -58,32 +53,7 @@ impl Themes {
         }
 
         println!("{output}");
-    }
-
-    pub fn get_selection() -> Result<(String, Theme), &'static str> {
-        let themes = Self::init();
-
-        let options = themes.0.keys().collect::<Vec<&String>>();
-
-        let (_, mut height) = get_terminal_size();
-
-        // Adjust height to accommodate prompt and help message.
-        height -= 3;
-
-        let res: Result<&String, InquireError> = Select::new("Select a theme:", options)
-            .with_help_message("↑↓ to move, type to filter, ENTER to select, ESC to exit")
-            .with_page_size(height)
-            .prompt();
-
-        if let Ok(name) = res {
-            themes.0
-                .get(name)
-                .map_or(Err("Unable to locate the selected theme."),
-                        |theme| Ok((name.to_string(), theme.clone()))
-                )
-        } else {
-            Err("Error while processing user input.")
-        }
+        ExitCode::SUCCESS
     }
 }
 
@@ -123,6 +93,18 @@ pub struct Theme {
 }
 
 impl Theme {
+    pub fn apply(new_theme: &str) -> ExitCode {
+        match fs::write(TERMUX_CONFIG, new_theme) {
+            Ok(_) => Tui::reload_termux(),
+            Err(e) => Self::fail(&format!("Unable to apply new theme. {e}")),
+        }
+    }
+
+    fn fail(msg: &str) -> ExitCode {
+        eprintln!("[-] {msg}");
+        ExitCode::FAILURE
+    }
+
     pub fn to_file_format(&self, name: &str) -> String {
         format!(
             "\
@@ -157,7 +139,7 @@ impl Theme {
         )
     }
 
-    fn get_formatted_list(&self) -> Vec<(String, usize)> {
+    fn get_entries(&self) -> Vec<(String, usize)> {
         let formatted_str = format!(
             "\
             cursor: {}, |foreground: {}, |background: {}, |color0: {}, |\
@@ -196,8 +178,9 @@ impl Theme {
 impl fmt::Display for Theme {
     // Make printing aware of terminal width for better formatting.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (width, _) = get_terminal_size();
-        let entries = self.get_formatted_list();
+        let (width, _) = Tui::get_size();
+
+        let entries = self.get_entries();
 
         let mut line_len: usize = 0;
         let mut output = String::new();

@@ -1,74 +1,36 @@
-use std::{
-    env, fs,
-    process::{Command, ExitCode},
-};
+// cli.rs: Command-line options processing.
+
+use std::{env::Args, process::ExitCode};
 
 use crate::data::Themes;
 
-// Standard location of the Termux color settings file.
-const TERMUX_COLORS_FILE: &str = "/data/data/com.termux/files/home/.termux/colors.properties";
-
-const USAGE_MSG: &str = "\
-    Usage: themux [OPTION]\n\n\
+pub const USAGE_MSG: &str = "\
+    Usage:\n    \
+        themux\n    \
+        themux [OPTION]\n\n\
     Options:\n    \
     	-h, --help    Print this help message.\n    \
-    	-l, --list    List all available themes.\n    \
-    	-t, --theme   Launch the theme selector.\n    \
-    	-v, --values  Print the default color values for all themes.";
+    	-t, --themes  List the available themes.";
 
-pub fn handle_cli_opts() -> ExitCode {
-    let mut args = env::args();
+pub struct Cli;
 
-    match args.nth(1).as_deref() {
-        Some("-h" | "--help") => {
-            eprintln!("{USAGE_MSG}");
-            ExitCode::SUCCESS
-        }
-        Some("-l" | "--list") => {
-            let themes = Themes::init();
-            themes.list_themes();
-            ExitCode::SUCCESS
-        }
-        Some("-t" | "--theme") => {
-            let (name, new_theme) = match Themes::get_selection() {
-                Ok((name, theme)) => (name.clone(), theme.to_file_format(&name)),
-                Err(e) => {
-                    eprintln!("{e}");
-                    return ExitCode::FAILURE;
-                }
-            };
+impl Cli {
+    fn help() -> ExitCode {
+        eprintln!("{USAGE_MSG}");
+        ExitCode::SUCCESS
+    }
 
-            match fs::write(TERMUX_COLORS_FILE, new_theme) {
-                Ok(_) => {
-                    Command::new("termux-reload-settings")
-                        .status()
-                        .expect("Error while reloading Termux settings.");
+    pub fn fail(msg: &str) -> ExitCode {
+        eprintln!("[-] {msg}");
+        ExitCode::FAILURE
+    }
 
-                    Command::new("clear")
-                        .status()
-                        .expect("Error while clearing the terminal.");
-
-                    println!("[+] The terminal theme is now {name}.");
-                    ExitCode::SUCCESS
-                }
-                Err(e) => {
-                    eprintln!("{e}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
-        Some("-v" | "--values") => {
-            let themes = Themes::init();
-            println!("{themes}");
-            ExitCode::SUCCESS
-        }
-        Some(opt) => {
-            eprintln!("[-] Invalid option: `{opt}`");
-            ExitCode::FAILURE
-        }
-        None => {
-            eprintln!("{USAGE_MSG}");
-            ExitCode::FAILURE
+    pub fn parse_opts(args: &mut Args) -> ExitCode {
+        match args.nth(1).as_deref() {
+            Some("-h" | "--help") => Self::help(),
+            Some("-t" | "--themes") => Themes::list(),
+            Some(opt) => Self::fail(&format!("Invalid option: `{opt}`")),
+            _ => Self::fail("Unknown option."),
         }
     }
 }
