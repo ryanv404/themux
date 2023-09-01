@@ -8,11 +8,15 @@ list.
 ## Usage
 
 ```
-Usage:
-    themux
-    themux [OPTION]
+Usage: themux [OPTION] <COMMAND>
+
+Commands:
+    run      Launch the theme selector.
+    list     List the available themes.
 
 Options:
-    -h, --help    Print this help message.
-    -t, --themes  List the available themes.
+    -h, --help
+             Print this help message.
+    -p, --print <THEME>
+             Print the color values for a given THEME.
 ```

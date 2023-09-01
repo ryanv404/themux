@@ -1,27 +1,28 @@
 // data.rs: I/O utilities, color theme data structures
 
-use std::{collections::BTreeMap, fmt, fs, num::ParseIntError, process::ExitCode, str::FromStr};
-
-use bincode::Decode;
+use std::{
+    collections::BTreeMap,
+    fmt, fs, 
+    num::ParseIntError, 
+    process::ExitCode, 
+    str::FromStr
+};
 
 use crate::tui::Tui;
+use crate::binary::decode;
 
 // Standard location of the Termux color settings file.
-const TERMUX_CONFIG: &str = "/data/data/com.termux/files/home/.termux/colors.properties";
+const TERMUX_CONFIG: &str =
+    "/data/data/com.termux/files/home/.termux/colors.properties";
 
-#[derive(Decode)]
+#[derive(Debug)]
 pub struct Themes(pub BTreeMap<String, Theme>);
 
 impl Themes {
     pub fn init() -> Self {
-        let bytes = include_bytes!("themes.bin");
-
-        let config = bincode::config::standard();
-        let (themes, _): (Self, usize) = bincode::decode_from_slice(&bytes[..], config).unwrap();
-
-        assert_eq!(themes.0.len(), 247);
-
-        themes
+        let themes = decode();
+        assert_eq!(themes.len(), 247);
+        Self(themes)
     }
 
     pub fn list() -> ExitCode {
@@ -69,27 +70,27 @@ impl fmt::Display for Themes {
     }
 }
 
-#[derive(Decode, Clone)]
+#[derive(Debug)]
 pub struct Theme {
-    color0: Rgb,
-    color1: Rgb,
-    color2: Rgb,
-    color3: Rgb,
-    color4: Rgb,
-    color5: Rgb,
-    color6: Rgb,
-    color7: Rgb,
-    color8: Rgb,
-    color9: Rgb,
-    color10: Rgb,
-    color11: Rgb,
-    color12: Rgb,
-    color13: Rgb,
-    color14: Rgb,
-    color15: Rgb,
-    background: Rgb,
-    foreground: Rgb,
-    cursor: Rgb,
+    pub color0: Rgb,
+    pub color1: Rgb,
+    pub color2: Rgb,
+    pub color3: Rgb,
+    pub color4: Rgb,
+    pub color5: Rgb,
+    pub color6: Rgb,
+    pub color7: Rgb,
+    pub color8: Rgb,
+    pub color9: Rgb,
+    pub color10: Rgb,
+    pub color11: Rgb,
+    pub color12: Rgb,
+    pub color13: Rgb,
+    pub color14: Rgb,
+    pub color15: Rgb,
+    pub background: Rgb,
+    pub foreground: Rgb,
+    pub cursor: Rgb,
 }
 
 impl Theme {
@@ -201,14 +202,14 @@ impl fmt::Display for Theme {
 }
 
 // Represents a color in RGB format.
-#[derive(Decode, Clone)]
-struct Rgb {
+#[derive(Clone, Copy, Debug)]
+pub struct Rgb {
     // Red
-    r: u8,
+    pub r: u8,
     // Green
-    g: u8,
+    pub g: u8,
     // Blue
-    b: u8,
+    pub b: u8,
 }
 
 impl FromStr for Rgb {
