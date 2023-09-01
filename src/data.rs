@@ -2,26 +2,28 @@
 
 use std::{
     collections::BTreeMap,
-    fmt, fs, 
+    env, fmt, fs, 
     num::ParseIntError, 
+    path::Path,
     process::ExitCode, 
-    str::FromStr
+    str::FromStr,
 };
 
-use crate::tui::Tui;
-use crate::binary::decode;
-
-// Standard location of the Termux color settings file.
-const TERMUX_CONFIG: &str =
-    "/data/data/com.termux/files/home/.termux/colors.properties";
+use crate::{
+    tui::Tui,
+    utils::deserialize,
+};
 
 #[derive(Debug)]
 pub struct Themes(pub BTreeMap<String, Theme>);
 
 impl Themes {
     pub fn init() -> Self {
-        let themes = decode();
+        let themes = deserialize();
+
+        // Expect to deserialize exactly 247 themes.
         assert_eq!(themes.len(), 247);
+
         Self(themes)
     }
 
@@ -95,9 +97,26 @@ pub struct Theme {
 
 impl Theme {
     pub fn apply(new_theme: &str) -> ExitCode {
-        match fs::write(TERMUX_CONFIG, new_theme) {
+        // Build up native path representation of the Termux directory's location.
+        let termux_dir = match env::var("HOME") {
+            Ok(home) => Path::new(&home).join(".termux"),
+            Err(e) => return Self::fail( &format!("Unable to determine the location \
+                                         of the HOME directory. {e}") )
+        };
+
+        // Ensure the path points to a directory creating it if it does not exist
+        if !termux_dir.is_dir() {
+            match fs::create_dir(&termux_dir) {
+                Ok(_) => {},
+                Err(e) => return Self::fail( &format!("Directory not found at \
+                    `HOME/.termux` and cannot be created. {e}") )
+            }
+        }
+
+        // Write the new theme to the Termux color settings file (.termux/colors.properties).
+        match fs::write(termux_dir.join("colors.properties"), new_theme) {
             Ok(_) => Tui::reload_termux(),
-            Err(e) => Self::fail(&format!("Unable to apply new theme. {e}")),
+            Err(e) => Self::fail( &format!("Unable to apply new theme. {e}") ),
         }
     }
 

@@ -4,10 +4,10 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::cargo)]
 
-mod binary;
 mod cli;
 mod data;
 mod tui;
+mod utils;
 
 use crate::cli::Cli;
 

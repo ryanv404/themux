@@ -1,9 +1,11 @@
 // cli.rs: Command-line options processing.
 
-use std::{env::{self, Args}, process::ExitCode};
+use std::{env, process::ExitCode};
 
-use crate::data::Themes;
-use crate::tui::Tui;
+use crate::{
+    data::Themes,
+    tui::Tui,
+};
 
 pub const USAGE_MSG: &str = "\
     Usage: themux [OPTION] <COMMAND>\n\n\
@@ -23,26 +25,29 @@ impl Cli {
         let mut args = env::args();
 
         match args.nth(1).as_deref() {
-            Some("-h" | "--help") | None => Self::help(),
+            // Subcommands
             Some("list") => Themes::list(),
-            Some("-p" | "--print") => Self::get_opt_arg(args),
             Some("run") => Tui::run(),
-            Some(opt) => Self::invalid_opt(opt)
+            // Options
+            Some("-h" | "--help") | None => Self::help(),
+            Some("-p" | "--print") => Self::get_optarg(args.collect::<Vec<String>>()),
+            // Unknown option
+            Some(opt) => Self::invalid_opt(opt),
         }
     }
 
-    fn get_opt_arg(args: Args) -> ExitCode {
-        let Some(key) = args.reduce(|acc, s| format!("{acc} {s}")) else {
+    fn get_optarg(args: Vec<String>) -> ExitCode {
+        let Some(key) = args.into_iter().reduce(|acc, s| format!("{acc} {s}")) else {
             return Self::fail("Missing required argument.")
         };
 
         let themes = Themes::init();
 
         // All keys are lowercase so convert search term to lowercase.
-        let needle = key.as_str().to_lowercase();
+        let query = key.as_str().to_lowercase();
 
-        if let Some(theme) = themes.0.get(&needle) {
-            println!("[*] {needle}\n{theme}");
+        if let Some(theme) = themes.0.get(&query) {
+            println!("[*] {query}\n{theme}");
             ExitCode::SUCCESS
         } else {
             eprintln!("[-] No theme by the name \"{key}\".");
