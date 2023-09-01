@@ -1,4 +1,4 @@
-// utils.rs: Custom serialize/deserialize functions; stringify.
+// utils.rs: Custom serialize/deserialize functions.
 //
 // Reduces the size of the stored Themes BTreeMap by 79% (from 76.2 kilobytes as
 // JSON to a combined 16.6 kilobytes as binary) without added dependencies.
