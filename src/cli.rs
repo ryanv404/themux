@@ -7,7 +7,7 @@ use crate::style::{Themes, CLR, GRN, RED};
 use crate::tui::Tui;
 use crate::util::{get_color_settings_file_path, fail};
 
-const PROG_NAME: &str = env!("CARGO_CRATE_NAME");
+const PROG_NAME: &str = env!("CARGO_PKG_NAME");
 const PROG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// A type containing methods used for handling CLI options.
@@ -16,9 +16,9 @@ pub struct Cli;
 impl Cli {
     /// Handle the CLI arguments.
     pub fn handle_args() -> ExitCode {
-        let mut args_iter = env::args().skip(1);
+        let mut args = env::args().skip(1);
 
-        match args_iter.next().as_deref() {
+        match args.next().as_deref() {
             // Start the theme selector TUI.
             Some("select") => Tui::run(),
             // Print a list of all available themes to stdout.
@@ -26,7 +26,7 @@ impl Cli {
             // Print the current theme.
             Some("current") => Self::print_current_theme(),
             // Print the color value settings for a given theme.
-            Some("settings") => Self::print_color_settings(args_iter),
+            Some("settings") => Self::print_color_settings(args),
             // Print the version.
             Some("-v" | "--version") => Self::print_version(),
             // Print the help message.
@@ -62,7 +62,6 @@ impl Cli {
     /// Print a help message to stdout.
     pub fn print_version() -> ExitCode {
         println!("{PROG_NAME} {PROG_VERSION}");
-
         ExitCode::SUCCESS
     }
 
@@ -90,7 +89,6 @@ impl Cli {
                         )),
                         |name| {
                             println!("{name}");
-
                             ExitCode::SUCCESS
                         }
                     )
@@ -116,13 +114,12 @@ impl Cli {
 
         if name.is_empty() {
             return fail(&format!(
-                "{RED}Missing argument for '--print'{CLR}"
+                "{RED}Missing argument for 'settings'{CLR}"
             ));
         }
 
         if let Some(theme) = Themes::init().get(&name) {
             println!("{GRN}{name}{CLR}:\n\n{theme}");
-
             ExitCode::SUCCESS
         } else {
             name.make_ascii_lowercase();

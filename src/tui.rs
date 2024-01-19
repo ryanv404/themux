@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::process::{Command, ExitCode};
 
-use inquire::{error::InquireResult, Select, type_aliases::Filter};
+use inquire::{error::InquireResult, Select};
 use terminal_size::{terminal_size, Height, Width};
 
 use crate::style::{Themes, CLR, RED};
@@ -62,16 +62,9 @@ impl Tui {
         let height = Self::get_terminal_size().1;
         let page_size = height - 2;
 
-        let filter: Filter<&str> = &|input, _, option, _| -> bool {
-            option
-                .get(..input.len())
-                .map_or(false, |opt| opt.eq_ignore_ascii_case(input))
-        };
-
         Select::new(prompt, options)
             .without_help_message()
             .with_page_size(page_size)
-            .with_filter(filter)
             .prompt_skippable()
     }
 }

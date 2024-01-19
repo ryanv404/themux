@@ -74,7 +74,7 @@ pub fn deserialize_names() -> Vec<String> {
     let names = include_str!("./theme_names.csv");
 
     names.split(',')
-        .map(ToString::to_string)
+        .map(|s| s.trim().to_string())
         .collect::<Vec<String>>()
 }
 
