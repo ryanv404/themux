@@ -1,6 +1,4 @@
-.vscode/
-
-notes/
-
-target/
+/.vscode
+/notes
+/target
 Cargo.lock
