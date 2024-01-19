@@ -1,14 +1,14 @@
 [package]
 name = "themux"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["ryanv404"]
-description = "Command-line tool for setting the color theme of a Termux terminal."
+description = "Command-line tool for setting the color theme in a Termux terminal emulator."
 repository = "https://github.com/ryanv404/themux"
-readme = "README.md"
-keywords = ["colors", "themes", "terminal", "termux"]
-categories = ["command-line-utilities"]
+readme = "./README.md"
 license = "MIT"
+keywords = ["colors", "style", "themes", "terminal", "termux"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 inquire = "0.6.2"

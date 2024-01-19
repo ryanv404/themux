@@ -1,16 +1,27 @@
-// main.rs: Terminal color theme selection tool.
+//! themux
+//!
+//! A CLI tool for setting the color theme in a Termux terminal emulator.
 
 #![deny(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
+#![deny(clippy::cargo)]
+#![deny(clippy::complexity)]
+#![deny(clippy::correctness)]
+#![deny(clippy::nursery)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::perf)]
+#![deny(clippy::style)]
+#![deny(clippy::suspicious)]
+#![allow(dead_code)]
+
+use std::process::ExitCode;
 
 mod cli;
-mod data;
+mod style;
 mod tui;
-mod utils;
+mod util;
 
-use crate::cli::Cli;
+use cli::Cli;
 
-fn main() -> std::process::ExitCode {
-    Cli::parse()
+fn main() -> ExitCode {
+    Cli::handle_args()
 }
