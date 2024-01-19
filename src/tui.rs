@@ -1,7 +1,6 @@
-use std::io::{self, Write};
 use std::process::{Command, ExitCode};
 
-use inquire::{error::InquireResult, Select};
+use dialoguer::{FuzzySelect, theme::ColorfulTheme};
 use terminal_size::{terminal_size, Height, Width};
 
 use crate::style::{Themes, CLR, RED};
@@ -12,31 +11,34 @@ pub struct Tui;
 
 impl Tui {
     /// Runs the TUI theme selector.
-    pub fn run() -> ExitCode {
+    pub fn get_selection() -> ExitCode {
         let themes = Themes::init();
 
-        let options = themes.0
-            .keys()
-            .map(String::as_str)
+        let names = themes.0
+            .iter()
+            .map(|theme| theme.name)
             .collect::<Vec<&str>>();
 
-        let name = match Self::get_selection(options) {
-            Ok(Some(name)) => name,
+        let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
+            .default(0)
+            .report(false)
+            .highlight_matches(false)
+            .with_prompt("Select a theme:")
+            .items(&names[..])
+            .interact_opt();
+
+        let name = match selection {
+            Ok(Some(idx)) => names[idx],
+            // User pressed 'q' or 'ESC'.
             Ok(None) => return ExitCode::SUCCESS,
             Err(e) => return fail(&format!("{RED}{e}{CLR}")),
         };
 
-        let Some(theme) = themes.get(name) else {
-            return fail(&format!("{RED}Unable to apply the theme.{CLR}"));
-        };
-
-        theme.apply(name)
-    }
-
-    pub fn clear_screen() {
-        let mut stdout = io::stdout().lock();
-        stdout.write_all(b"\x1b[2J\x1b[1;1H\r").unwrap();
-        stdout.flush().unwrap();
+        if let Some(theme) = themes.get(name) {
+            theme.apply()
+        } else {
+            fail(&format!("{RED}Unable to apply the theme.{CLR}"))
+        }
     }
 
     pub fn reload_settings() {
@@ -53,18 +55,5 @@ impl Tui {
         };
 
         (w.into(), h.into())
-    }
-
-    /// Returns the user's theme selection.
-    pub fn get_selection(options: Vec<&str>) -> InquireResult<Option<&str>> {
-        let prompt = "Select a theme:";
-
-        let height = Self::get_terminal_size().1;
-        let page_size = height - 2;
-
-        Select::new(prompt, options)
-            .without_help_message()
-            .with_page_size(page_size)
-            .prompt_skippable()
     }
 }

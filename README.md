@@ -1,22 +1,22 @@
 # themux
 
-A simple command-line tool for setting the color theme of a Termux terminal.
+A command-line tool for selecting color themes in a Termux terminal emulator.
 
-Contains 247 built-in color themes that can be selected from an interactive
+Contains 247 built-in color themes that can be applied from an interactive
 list.
 
 ## Usage
 
 ```
-Usage: themux [OPTION] <COMMAND>
+USAGE: themux [OPTION] <COMMAND>
 
-Commands:
-    run      Launch the theme selector.
-    list     List the available themes.
+COMMANDS:
+    all            Print a list of all available themes.
+    current        Print the currently set theme.
+    select         Launch the theme selector.
+    show <THEME>   Print the color value settings for THEME.
 
-Options:
-    -h, --help
-             Print this help message.
-    -p, --print <THEME>
-             Print the color values for a given THEME.
+OPTIONS:
+    -h, --help     Print this help message and exit.
+    -v, --version  Print the version.
 ```

@@ -1,13 +1,14 @@
-use std::collections::BTreeMap;
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::num::ParseIntError;
 use std::process::ExitCode;
 
+use crate::data::ALL_THEMES;
 use crate::tui::Tui;
-use crate::util::{
-    deserialize, fail, get_color_settings_file_path,
-};
+use crate::util::{fail, get_settings_file_path};
 
 pub const CLR: &str = "\x1b[0m";
 pub const RED: &str = "\x1b[38;2;255;0;0m";
@@ -17,69 +18,94 @@ pub const CYAN: &str = "\x1b[38;2;0;255;255m";
 
 /// A wrapper around a data structure containing theme palettes.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Themes(pub BTreeMap<String, Theme>);
+pub struct Themes(pub BTreeSet<Theme>);
 
-impl Display for Themes {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let (width, _) = Tui::get_terminal_size();
+impl Themes {
+    /// Initializes the themes data.
+    pub fn init() -> Self {
+        let mut set = BTreeSet::<Theme>::new();
+
+        for data in &ALL_THEMES {
+            let theme = Theme {
+                name: data.0,
+                cursor: data.1[3..=5].into(),
+                foreground: data.1[0..=2].into(),
+                background: data.1[6..=8].into(),
+                color0: data.1[9..=11].into(),
+                color1: data.1[12..=14].into(),
+                color2: data.1[15..=17].into(),
+                color3: data.1[18..=20].into(),
+                color4: data.1[21..=23].into(),
+                color5: data.1[24..=26].into(),
+                color6: data.1[27..=29].into(),
+                color7: data.1[30..=32].into(),
+                color8: data.1[33..=35].into(),
+                color9: data.1[36..=38].into(),
+                color10: data.1[39..=41].into(),
+                color11: data.1[42..=44].into(),
+                color12: data.1[45..=47].into(),
+                color13: data.1[48..=50].into(),
+                color14: data.1[51..=53].into(),
+                color15: data.1[54..=56].into()
+            };
+
+            assert!(set.insert(theme));
+        }
+
+        assert_eq!(set.len(), 247);
+
+        Self(set)
+    }
+
+    /// Prints a list of all theme names to stdout.
+    pub fn print_all(&self) -> ExitCode {
+        let width = Tui::get_terminal_size().0;
 
         let mut line_len = 0;
         let max_width = width - 4;
         let max_idx = self.len() - 1;
 
-        for (idx, name) in self.0.keys().enumerate() {
-            let is_final_item = idx == max_idx;
+        println!("{CYAN}Available Themes{CLR}\n");
 
+        for (idx, name) in self.0.iter().map(|t| t.name).enumerate() {
             // Add 2 for the ", " separator.
             line_len = line_len + name.len() + 2;
-            let do_prepend_newline = line_len >= max_width;
 
-            if name.as_str() == "3024 day" {
-                write!(f, "{GRN}{name}{CLR}, ")?;
+            if name == "3024 Day" {
+                print!("{GRN}{name}{CLR}, ");
                 continue;
             }
 
+            let is_final_item = idx == max_idx;
+
+            let do_prepend_newline = line_len >= max_width;
+
             let is_new_group = matches!(
-                name.as_str(),
-                "c64" | "fairy floss" | "ibm 3270" | "n0tch2k"
-                    | "red alert" | "teerb"
+                name,
+                "C64"
+                | "Fairy Floss"
+                | "Ibm 3270"
+                | "N0tch2k"
+                | "Red Alert"
+                | "Teerb"
             );
 
             match (is_new_group, is_final_item, do_prepend_newline) {
-                (false, true, false) => write!(f, "{name}")?,
-                (false, true, true) => write!(f, "\n{name}")?,
-                (false, false, false) => write!(f, "{name}, ")?,
+                (false, true, false) => println!("{name}"),
+                (false, true, true) => println!("\n{name}"),
+                (false, false, false) => print!("{name}, "),
                 (false, false, true) => {
                     line_len = name.len() + 2;
-                    write!(f, "\n{name}, ")?;
+                    print!("\n{name}, ");
                 },
                 (true, false, _) => {
                     line_len = name.len() + 2;
-                    write!(f, "\n\n{GRN}{name}{CLR}, ")?;
+                    print!("\n\n{GRN}{name}{CLR}, ");
                 },
                 (true, true, _) => unreachable!(),
             }
         }
 
-        Ok(())
-    }
-}
-
-impl Themes {
-    /// Deserializes themes data from a local file and returns it as a
-    /// `Themes` instance.
-    pub fn init() -> Self {
-        let themes = deserialize();
-
-        // Expect exactly 247 themes.
-        assert_eq!(themes.len(), 247);
-
-        themes
-    }
-
-    /// Prints a list of all theme names to stdout.
-    pub fn list(&self) -> ExitCode {
-        println!("{CYAN}Available Themes:{CLR}\n\n{self}");
         ExitCode::SUCCESS
     }
 
@@ -91,19 +117,17 @@ impl Themes {
     /// Returns the `Theme` that matches the given `name` (case insensitively),
     /// if `name` is a valid theme name.
     pub fn get(&self, query: &str) -> Option<&Theme> {
-        for (name, theme) in &self.0 {
-            if name.eq_ignore_ascii_case(query) {
-                return Some(theme);
-            }
-        }
-
-        None
+        self.0
+            .iter()
+            .find(|theme| theme.name.eq_ignore_ascii_case(query))
     }
 }
 
 /// A theme palette.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug)]
 pub struct Theme {
+    /// Theme name.
+    pub name: &'static str,
     /// Black.
     pub color0: Rgb,
     /// Red.
@@ -142,40 +166,47 @@ pub struct Theme {
     pub foreground: Rgb,
     /// Cursor color.
     pub cursor: Rgb,
-//    /// Theme name.
-//    pub name: String,
 }
 
-impl Display for Theme {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "\
-{BLUE}cursor{CLR}: {}\n{BLUE}color0{CLR}: {}\n{BLUE}color1{CLR}: {}
-{BLUE}color2{CLR}: {}\n{BLUE}color3{CLR}: {}\n{BLUE}color4{CLR}: {}
-{BLUE}color5{CLR}: {}\n{BLUE}color6{CLR}: {}\n{BLUE}color7{CLR}: {}
-{BLUE}color8{CLR}: {}\n{BLUE}color9{CLR}: {}\n{BLUE}color10{CLR}: {}
-{BLUE}color11{CLR}: {}\n{BLUE}color12{CLR}: {}\n{BLUE}color13{CLR}: {}
-{BLUE}color14{CLR}: {}\n{BLUE}color15{CLR}: {}\n{BLUE}foreground{CLR}: {}
-{BLUE}background{CLR}: {}",
-            self.cursor, self.color0, self.color1, self.color2, self.color3,
-            self.color4, self.color5, self.color6, self.color7, self.color8,
-            self.color9, self.color10, self.color11, self.color12,
-            self.color13, self.color14, self.color15, self.foreground,
-            self.background
-        )?;
+impl PartialEq for Theme {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq_ignore_ascii_case(other.name)
+    }
+}
 
-        Ok(())
+impl Eq for Theme {}
+
+impl PartialOrd for Theme {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.name.cmp(other.name))
+    }
+}
+
+impl Ord for Theme {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let lower1 = self.name.to_ascii_lowercase();
+        let lower2 = other.name.to_ascii_lowercase();
+
+        lower1.cmp(&lower2)
+    }
+}
+
+impl Hash for Theme {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let lower = self.name.to_ascii_lowercase();
+        lower.to_ascii_lowercase().hash(state);
     }
 }
 
 impl Theme {
     /// Writes this `Theme` to the color settings file.
-    pub fn apply(&self, name: &str) -> ExitCode {
-        let path = match get_color_settings_file_path() {
+    pub fn apply(&self) -> ExitCode {
+        let path = match get_settings_file_path() {
             Ok(path) => path,
             Err(msg) => return fail(&format!("{RED}{msg}{CLR}")),
         };
 
-        let settings = self.to_settings_string(name);
+        let settings = self.to_settings_string();
 
         if let Err(e) = fs::write(path, settings) {
             let msg = format!("{RED}Unable to apply theme.\n{e}{CLR}");
@@ -188,25 +219,43 @@ impl Theme {
     }
 
     /// Returns the `Theme` as a `String` in the settings file format.
-    pub fn to_settings_string(&self, name: &str) -> String {
+    pub fn to_settings_string(&self) -> String {
         format!("\
 #===============================================================
-# Color Theme: {name}
+# Color Theme: {}
 #===============================================================\n
 color0={}\ncolor1={}\ncolor2={}\ncolor3={}\ncolor4={}\ncolor5={}\ncolor6={}
 color7={}\ncolor8={}\ncolor9={}\ncolor10={}\ncolor11={}\ncolor12={}
 color13={}\ncolor14={}\ncolor15={}\nbackground={}\nforeground={}\ncursor={}\n",
-            self.color0.to_hex_str(), self.color1.to_hex_str(),
-            self.color2.to_hex_str(), self.color3.to_hex_str(),
-            self.color4.to_hex_str(), self.color5.to_hex_str(),
-            self.color6.to_hex_str(), self.color7.to_hex_str(),
-            self.color8.to_hex_str(), self.color9.to_hex_str(),
-            self.color10.to_hex_str(), self.color11.to_hex_str(),
-            self.color12.to_hex_str(), self.color13.to_hex_str(),
-            self.color14.to_hex_str(), self.color15.to_hex_str(),
-            self.background.to_hex_str(), self.foreground.to_hex_str(),
-            self.cursor.to_hex_str()
+            self.name, self.color0.as_hex(), self.color1.as_hex(),
+            self.color2.as_hex(), self.color3.as_hex(), self.color4.as_hex(),
+            self.color5.as_hex(), self.color6.as_hex(), self.color7.as_hex(),
+            self.color8.as_hex(), self.color9.as_hex(), self.color10.as_hex(),
+            self.color11.as_hex(), self.color12.as_hex(),
+            self.color13.as_hex(), self.color14.as_hex(),
+            self.color15.as_hex(), self.background.as_hex(),
+            self.foreground.as_hex(), self.cursor.as_hex()
         )
+    }
+
+    pub fn print_values(&self) -> ExitCode {
+        println!("\
+{GRN}{}{CLR}\n
+{BLUE}cursor{CLR}: {}\n{BLUE}color0{CLR}: {}\n{BLUE}color1{CLR}: {}
+{BLUE}color2{CLR}: {}\n{BLUE}color3{CLR}: {}\n{BLUE}color4{CLR}: {}
+{BLUE}color5{CLR}: {}\n{BLUE}color6{CLR}: {}\n{BLUE}color7{CLR}: {}
+{BLUE}color8{CLR}: {}\n{BLUE}color9{CLR}: {}\n{BLUE}color10{CLR}: {}
+{BLUE}color11{CLR}: {}\n{BLUE}color12{CLR}: {}\n{BLUE}color13{CLR}: {}
+{BLUE}color14{CLR}: {}\n{BLUE}color15{CLR}: {}\n{BLUE}foreground{CLR}: {}
+{BLUE}background{CLR}: {}",
+            self.name, self.cursor, self.color0, self.color1, self.color2,
+            self.color3, self.color4, self.color5, self.color6, self.color7,
+            self.color8, self.color9, self.color10, self.color11, self.color12,
+            self.color13, self.color14, self.color15, self.foreground,
+            self.background
+        );
+
+        ExitCode::SUCCESS
     }
 }
 
@@ -227,28 +276,32 @@ impl Display for Rgb {
     }
 }
 
-impl Rgb {
-    /// Returns an `RGB` instance from a hex string (i.e. "RRGGBB").
-    pub fn from_hex_str(s: &str) -> Result<Self, ParseIntError> {
-        let r = u8::from_str_radix(&s[0..=1], 16)?;
-        let g = u8::from_str_radix(&s[2..=3], 16)?;
-        let b = u8::from_str_radix(&s[4..=5], 16)?;
-        Ok(Self { r, g, b })
-    }
-
-    /// Returns this `RGB` color as a hex string (i.e. "RRGGBB").
-    pub fn to_hex_str(self) -> String {
-        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
-    }
-
-    /// Returns an `RGB` instance from a three element bytes slice.
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+impl From<&[u8]> for Rgb {
+    fn from(bytes: &[u8]) -> Self {
         assert_eq!(bytes.len(), 3);
 
         Self { r: bytes[0], g: bytes[1], b: bytes[2] }
     }
+}
+
+impl Rgb {
+    /// Returns an `RGB` instance from a hex string (i.e. "RRGGBB").
+    #[allow(dead_code)]
+    pub fn from_hex_str(s: &str) -> Result<Self, ParseIntError> {
+        let r = u8::from_str_radix(&s[0..=1], 16)?;
+        let g = u8::from_str_radix(&s[2..=3], 16)?;
+        let b = u8::from_str_radix(&s[4..=5], 16)?;
+
+        Ok(Self { r, g, b })
+    }
+
+    /// Returns this `RGB` color as a hex string (i.e. "RRGGBB").
+    pub fn as_hex(self) -> String {
+        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
+    }
 
     /// Returns this `RGB` instance as a bytes array.
+    #[allow(dead_code)]
     pub const fn to_bytes(self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }
