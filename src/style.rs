@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::fs;
 use std::hash::{Hash, Hasher};
+use std::io::{self, BufWriter, Result as IoResult, StdoutLock, Write};
 use std::num::ParseIntError;
 use std::process::ExitCode;
 
@@ -15,6 +16,8 @@ pub const RED: &str = "\x1b[38;2;255;0;0m";
 pub const GRN: &str = "\x1b[38;2;0;255;145m";
 pub const BLUE: &str = "\x1b[38;2;0;170;235m";
 pub const CYAN: &str = "\x1b[38;2;0;255;255m";
+
+type Writer<'a> = BufWriter<StdoutLock<'a>>;
 
 /// A wrapper around a data structure containing theme palettes.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -85,7 +88,7 @@ impl Themes {
                 "C64"
                 | "Fairy Floss"
                 | "Ibm 3270"
-                | "N0tch2k"
+                | "N0Tch2K"
                 | "Red Alert"
                 | "Teerb"
             );
@@ -130,21 +133,21 @@ pub struct Theme {
     pub name: &'static str,
     /// Black.
     pub color0: Rgb,
-    /// Red.
+    /// Dim red.
     pub color1: Rgb,
-    /// Green.
+    /// Dim green.
     pub color2: Rgb,
-    /// Yellow.
+    /// Dim yellow.
     pub color3: Rgb,
-    /// Blue.
+    /// Dim blue.
     pub color4: Rgb,
-    /// Purple.
+    /// Dim purple.
     pub color5: Rgb,
-    /// Cyan.
+    /// Dim cyan.
     pub color6: Rgb,
-    /// White.
+    /// Dim white.
     pub color7: Rgb,
-    /// Bright black.
+    /// Medium gray.
     pub color8: Rgb,
     /// Bright red.
     pub color9: Rgb,
@@ -152,7 +155,7 @@ pub struct Theme {
     pub color10: Rgb,
     /// Bright yellow.
     pub color11: Rgb,
-    /// Bright blue.
+    /// Light blue.
     pub color12: Rgb,
     /// Bright purple.
     pub color13: Rgb,
@@ -160,9 +163,9 @@ pub struct Theme {
     pub color14: Rgb,
     /// Bright white.
     pub color15: Rgb,
-    /// Terminal background color.
+    /// Background color.
     pub background: Rgb,
-    /// Terminal foreground color.
+    /// Foreground color.
     pub foreground: Rgb,
     /// Cursor color.
     pub cursor: Rgb,
@@ -219,7 +222,7 @@ impl Theme {
     }
 
     /// Returns the `Theme` as a `String` in the settings file format.
-    pub fn to_settings_string(&self) -> String {
+    pub fn to_settings_string(self) -> String {
         format!("\
 #===============================================================
 # Color Theme: {}
@@ -227,35 +230,44 @@ impl Theme {
 color0={}\ncolor1={}\ncolor2={}\ncolor3={}\ncolor4={}\ncolor5={}\ncolor6={}
 color7={}\ncolor8={}\ncolor9={}\ncolor10={}\ncolor11={}\ncolor12={}
 color13={}\ncolor14={}\ncolor15={}\nbackground={}\nforeground={}\ncursor={}\n",
-            self.name, self.color0.as_hex(), self.color1.as_hex(),
-            self.color2.as_hex(), self.color3.as_hex(), self.color4.as_hex(),
-            self.color5.as_hex(), self.color6.as_hex(), self.color7.as_hex(),
-            self.color8.as_hex(), self.color9.as_hex(), self.color10.as_hex(),
-            self.color11.as_hex(), self.color12.as_hex(),
-            self.color13.as_hex(), self.color14.as_hex(),
-            self.color15.as_hex(), self.background.as_hex(),
-            self.foreground.as_hex(), self.cursor.as_hex()
+            self.name, self.color0, self.color1,
+            self.color2, self.color3, self.color4,
+            self.color5, self.color6, self.color7,
+            self.color8, self.color9, self.color10,
+            self.color11, self.color12,
+            self.color13, self.color14,
+            self.color15, self.background,
+            self.foreground, self.cursor
         )
     }
 
-    pub fn print_values(&self) -> ExitCode {
-        println!("\
-{GRN}{}{CLR}\n
-{BLUE}cursor{CLR}: {}\n{BLUE}color0{CLR}: {}\n{BLUE}color1{CLR}: {}
-{BLUE}color2{CLR}: {}\n{BLUE}color3{CLR}: {}\n{BLUE}color4{CLR}: {}
-{BLUE}color5{CLR}: {}\n{BLUE}color6{CLR}: {}\n{BLUE}color7{CLR}: {}
-{BLUE}color8{CLR}: {}\n{BLUE}color9{CLR}: {}\n{BLUE}color10{CLR}: {}
-{BLUE}color11{CLR}: {}\n{BLUE}color12{CLR}: {}\n{BLUE}color13{CLR}: {}
-{BLUE}color14{CLR}: {}\n{BLUE}color15{CLR}: {}\n{BLUE}foreground{CLR}: {}
-{BLUE}background{CLR}: {}",
-            self.name, self.cursor, self.color0, self.color1, self.color2,
-            self.color3, self.color4, self.color5, self.color6, self.color7,
-            self.color8, self.color9, self.color10, self.color11, self.color12,
-            self.color13, self.color14, self.color15, self.foreground,
-            self.background
-        );
+    /// Prints the color values to stdout using color formatting.
+    pub fn print_values(&self) -> IoResult<()> {
+        let stdout = io::stdout().lock();
+        let mut w = BufWriter::new(stdout);
 
-        ExitCode::SUCCESS
+        writeln!(&mut w, "{GRN}{}{CLR}", self.name)?;
+        self.color0.print(&mut w, "color0")?;
+        self.color1.print(&mut w, "color1")?;
+        self.color2.print(&mut w, "color2")?;
+        self.color3.print(&mut w, "color3")?;
+        self.color4.print(&mut w, "color4")?;
+        self.color5.print(&mut w, "color5")?;
+        self.color6.print(&mut w, "color6")?;
+        self.color7.print(&mut w, "color7")?;
+        self.color8.print(&mut w, "color8")?;
+        self.color9.print(&mut w, "color9")?;
+        self.color10.print(&mut w, "color10")?;
+        self.color11.print(&mut w, "color11")?;
+        self.color12.print(&mut w, "color12")?;
+        self.color13.print(&mut w, "color13")?;
+        self.color14.print(&mut w, "color14")?;
+        self.color15.print(&mut w, "color15")?;
+        self.cursor.print(&mut w, "cursor")?;
+        self.foreground.print(&mut w, "foreground")?;
+        self.background.print(&mut w, "background")?;
+        w.flush()?;
+        Ok(())
     }
 }
 
@@ -272,7 +284,7 @@ pub struct Rgb {
 
 impl Display for Rgb {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{CYAN}#{:02X}{:02X}{:02X}{CLR}", self.r, self.g, self.b)
+        write!(f, "#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
 }
 
@@ -295,14 +307,33 @@ impl Rgb {
         Ok(Self { r, g, b })
     }
 
-    /// Returns this `RGB` color as a hex string (i.e. "RRGGBB").
-    pub fn as_hex(self) -> String {
-        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
+    /// Calculates the perceived darkness from the RGB value and returns true
+    /// if it is considered dark.
+    ///
+    /// https://www.nbdtech.com/Blog/archive/2008/04/27/Calculating-the-
+    /// Perceived-Brightness-of-a-Color.aspx
+    #[allow(dead_code)]
+    pub fn is_dark(&self) -> bool {
+        let r = (self.r as u16 * self.r as u16) as f32 * 0.241_f32;
+        let g = (self.g as u16 * self.g as u16) as f32 * 0.691_f32;
+        let b = (self.b as u16 * self.b as u16) as f32 * 0.068_f32;
+
+        let brightness = (r + g + b).sqrt().floor();
+
+        brightness < 130.0
     }
 
-    /// Returns this `RGB` instance as a bytes array.
-    #[allow(dead_code)]
-    pub const fn to_bytes(self) -> [u8; 3] {
-        [self.r, self.g, self.b]
+    /// Writes the formatted RBG value to `Writer`.
+    pub fn print(&self, w: &mut Writer<'_>, label: &str) -> IoResult<()> {
+        write!(w, "{BLUE}{label}{CLR}: {CYAN}{self}{CLR}")?;
+        write!(w, "{:1$}", " ", 11 - label.len())?;
+        writeln!(
+            w,
+            "\x1b[48;2;{};{};{}m  {CLR}",
+            self.r,
+            self.g,
+            self.b
+        )?;
+        Ok(())
     }
 }

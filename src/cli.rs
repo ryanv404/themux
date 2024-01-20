@@ -19,7 +19,7 @@ impl Cli {
 
         match args.next().as_deref() {
             // Start the theme selector TUI.
-            Some("select") => Tui::get_selection(),
+            Some("set") => Tui::get_selection(),
             // Print a list of all available themes to stdout.
             Some("all") => Themes::init().print_all(),
             // Print the current theme.
@@ -62,7 +62,7 @@ impl Cli {
 {GRN}COMMANDS:{CLR}
     all            Print a list of all available themes.
     current        Print the currently set theme.
-    select         Launch the theme selector.
+    set            Set the theme from an interactive list.
     show <THEME>   Print the color value settings for THEME.\n
 {GRN}OPTIONS:{CLR}
     -h, --help     Print this help message and exit.
@@ -117,7 +117,10 @@ impl Cli {
         }
 
         if let Some(theme) = Themes::init().get(name) {
-            theme.print_values()
+            theme.print_values().map_or_else(
+                |e| fail(&format!("{RED}{e}{CLR}")),
+                |_| ExitCode::SUCCESS
+            )
         } else {
             fail(&format!("{RED}\"{name}\" is not a valid theme.{CLR}"))
         }
