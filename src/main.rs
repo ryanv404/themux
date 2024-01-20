@@ -1,11 +1,21 @@
-//! themux
+//! # themux
 //!
-//! A CLI tool for setting the color theme in a Termux terminal emulator.
+//! A command-line tool for selecting color themes in a Termux terminal emulator.
+//!
+//! Contains 247 built-in color themes.
+//!
+//! Apply a theme to the terminal by running `themux set` and selecting an
+//! available theme from an interactive list.
 
 #![deny(clippy::all)]
-
-use std::env;
-use std::process::ExitCode;
+#![deny(clippy::cargo)]
+#![deny(clippy::complexity)]
+#![deny(clippy::correctness)]
+#![deny(clippy::nursery)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::perf)]
+#![deny(clippy::style)]
+#![deny(clippy::suspicious)]
 
 mod cli;
 mod data;
@@ -14,23 +24,27 @@ mod tui;
 mod util;
 
 use cli::Cli;
-use style::{CLR, RED};
 
-fn main() -> ExitCode {
-    if !is_termux() {
-        eprintln!("{RED}Not a Termux environment.{CLR}");
-        return ExitCode::FAILURE;
+fn main() -> std::process::ExitCode {
+    // Exit if not a Termux environment.
+    if !is_termux_env() {
+        eprintln!("Error: Not a Termux environment. Exiting.");
+        return std::process::ExitCode::FAILURE;
     }
 
+    // Parse and handle command-line arguments.
     Cli::handle_args()
 }
 
-fn is_termux() -> bool {
-    env::vars_os().any(|(var, _)| {
-        if let Some(v) = var.as_os_str().to_str() {
-            v.contains("TERMUX")
-        } else {
-            false
+// Checks environment variables for indication that we are in Termux.
+fn is_termux_env() -> bool {
+    for (var_name, _) in std::env::vars_os() {
+        if let Some(name) = var_name.as_os_str().to_str() {
+            if name.contains("TERMUX") {
+                return true;
+            }
         }
-    })
+    }
+
+    false
 }

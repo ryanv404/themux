@@ -1,12 +1,11 @@
 use std::process::{Command, ExitCode};
 
-use dialoguer::{FuzzySelect, theme::ColorfulTheme};
-use terminal_size::{terminal_size, Height, Width};
+use dialoguer::{theme::ColorfulTheme, FuzzySelect};
+use terminal_size::{terminal_size, Width};
 
-use crate::style::{Themes, CLR, RED};
-use crate::util::fail;
+use crate::style::Themes;
 
-/// A type containing methods for handling the TUI.
+/// A type containing methods for handling the theme selection TUI.
 pub struct Tui;
 
 impl Tui {
@@ -14,7 +13,8 @@ impl Tui {
     pub fn get_selection() -> ExitCode {
         let themes = Themes::init();
 
-        let names = themes.0
+        let names = themes
+            .0
             .iter()
             .map(|theme| theme.name)
             .collect::<Vec<&str>>();
@@ -31,29 +31,41 @@ impl Tui {
             Ok(Some(idx)) => names[idx],
             // User pressed 'q' or 'ESC'.
             Ok(None) => return ExitCode::SUCCESS,
-            Err(e) => return fail(&format!("{RED}{e}{CLR}")),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                return ExitCode::FAILURE;
+            }
         };
 
         if let Some(theme) = themes.get(name) {
-            theme.apply()
+            if let Err(e) = theme.apply() {
+                eprintln!("Error: Unable to apply the theme.\n{e}");
+                return ExitCode::FAILURE;
+            }
+
+            return Self::reload_termux_settings();
+        }
+
+        eprintln!("Error: Unable to apply the theme.");
+        ExitCode::FAILURE
+    }
+
+    // Reset Termux setting using the `termux-reload-settings` command.
+    fn reload_termux_settings() -> ExitCode {
+        if let Err(e) = Command::new("termux-reload-settings").status() {
+            eprintln!("Error: Unable to reload Termux settings.\n{e}");
+            ExitCode::FAILURE
         } else {
-            fail(&format!("{RED}Unable to apply the theme.{CLR}"))
+            ExitCode::SUCCESS
         }
     }
 
-    pub fn reload_settings() {
-        if Command::new("termux-reload-settings").status().is_err() {
-            fail(&format!("{RED}Unable to reload Termux settings.{CLR}"));
+    /// Returns the terminal's width or 60 if the width cannot be determined.
+    pub fn get_terminal_width() -> usize {
+        if let Some((Width(w), _)) = terminal_size() {
+            w.into()
+        } else {
+            60
         }
-    }
-
-    /// Returns the terminal's (width, height) or (60, 10) if the size cannot
-    /// be determined.
-    pub fn get_terminal_size() -> (usize, usize) {
-        let Some((Width(w), Height(h))) = terminal_size() else {
-            return (60, 10);
-        };
-
-        (w.into(), h.into())
     }
 }

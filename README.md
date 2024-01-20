@@ -15,6 +15,8 @@ USAGE: themux [OPTION] <COMMAND>
 COMMANDS:
     all            Print a list of all available themes.
     current        Print the currently set theme.
+    dark           Print a list of all dark themes.
+    light          Print a list of all light themes.
     set            Set the theme from an interactive list.
     show <THEME>   Print the color value settings for THEME.
 
