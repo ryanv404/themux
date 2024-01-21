@@ -51,12 +51,14 @@ impl Themes {
     // Returns the terminal width.
     fn get_terminal_width() -> usize {
         let width = unsafe { terminal_width() };
+
         usize::from(width)
     }
 
     /// Prints a list of all theme names to stdout.
     pub fn print(&self, do_light: bool, do_dark: bool) -> IoResult<ExitCode> {
         let stdout = io::stdout().lock();
+
         let is_term = stdout.is_terminal();
 
         let mut out = BufWriter::new(stdout);
@@ -246,6 +248,8 @@ impl Theme {
             "\
 #===============================================================
 # Color Theme: {}
+#
+# Credit: https://github.com/Gogh-Co/Gogh/graphs/contributors
 #===============================================================\n
 color0={}\ncolor1={}\ncolor2={}\ncolor3={}\ncolor4={}\ncolor5={}\ncolor6={}
 color7={}\ncolor8={}\ncolor9={}\ncolor10={}\ncolor11={}\ncolor12={}
@@ -373,4 +377,3 @@ impl Rgb {
         Ok(())
     }
 }
-
