@@ -10,10 +10,10 @@ license = "MIT"
 keywords = ["colors", "style", "themes", "terminal", "termux"]
 categories = ["command-line-utilities"]
 
+[build-dependencies]
+cc = "1.0"
+
 [dependencies.dialoguer]
 version = "0.11.0"
 default-features = false
 features = ["fuzzy-select"]
-
-[dependencies]
-terminal_size = "0.3.0"

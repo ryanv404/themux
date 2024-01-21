@@ -1,11 +1,12 @@
 //! # themux
 //!
-//! A command-line tool for selecting color themes in a Termux terminal emulator.
+//! A command-line tool for setting a color theme in a Termux terminal emulator.
 //!
-//! Contains 247 built-in color themes.
+//! Run `themux set` to launch an interactive list with fuzzy search capability
+//! to select and automatically apply the theme.
 //!
-//! Apply a theme to the terminal by running `themux set` and selecting an
-//! available theme from an interactive list.
+//! View the available light themes with `themux light` and the available dark
+//! themes with `themux dark`.
 
 #![deny(clippy::all)]
 #![deny(clippy::cargo)]
@@ -24,27 +25,14 @@ mod tui;
 mod util;
 
 use cli::Cli;
+use util::is_termux_env;
 
 fn main() -> std::process::ExitCode {
     // Exit if not a Termux environment.
     if !is_termux_env() {
-        eprintln!("Error: Not a Termux environment. Exiting.");
-        return std::process::ExitCode::FAILURE;
+        fail!("Not a Termux environment. Exiting.");
     }
 
     // Parse and handle command-line arguments.
     Cli::handle_args()
-}
-
-// Checks environment variables for indication that we are in Termux.
-fn is_termux_env() -> bool {
-    for (var_name, _) in std::env::vars_os() {
-        if let Some(name) = var_name.as_os_str().to_str() {
-            if name.contains("TERMUX") {
-                return true;
-            }
-        }
-    }
-
-    false
 }

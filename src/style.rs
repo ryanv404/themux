@@ -6,14 +6,20 @@ use std::hash::{Hash, Hasher};
 use std::io::{
     self, BufWriter, IsTerminal, Result as IoResult, StdoutLock, Write,
 };
+use std::os::raw::c_ushort;
 use std::process::ExitCode;
 use std::string::ToString;
 
 use crate::data::ALL_THEMES;
-use crate::tui::Tui;
+use crate::fail;
 use crate::util::get_settings_file_path;
 
+extern "C" {
+    fn terminal_width() -> c_ushort;
+}
+
 pub const CLR: &str = "\x1b[0m";
+pub const RED: &str = "\x1b[38;2;255;0;0m";
 pub const GRN: &str = "\x1b[38;2;0;255;145m";
 pub const BLUE: &str = "\x1b[38;2;0;170;235m";
 pub const CYAN: &str = "\x1b[38;2;0;255;255m";
@@ -29,12 +35,23 @@ impl Themes {
 
         for data in &ALL_THEMES {
             let theme = Theme::from((data.0, &data.1[..]));
-            assert!(set.insert(theme));
+
+            if !set.insert(theme) {
+                fail!("Unable to initialize built-in themes data");
+            }
         }
 
-        assert_eq!(set.len(), 247);
+        if set.len() != 247 {
+            fail!("Unable to initialize built-in themes data");
+        }
 
         Self(set)
+    }
+
+    // Returns the terminal width.
+    fn get_terminal_width() -> usize {
+        let width = unsafe { terminal_width() };
+        usize::from(width)
     }
 
     /// Prints a list of all theme names to stdout.
@@ -43,20 +60,6 @@ impl Themes {
         let is_term = stdout.is_terminal();
 
         let mut out = BufWriter::new(stdout);
-
-        // Handle title.
-        writeln!(
-            &mut out,
-            "{}{} Themes:{}\n",
-            if is_term { GRN } else { "" },
-            match (do_light, do_dark) {
-                (true, true) => "All",
-                (false, true) => "Dark",
-                (true, false) => "Light",
-                (false, false) => unreachable!(),
-            },
-            if is_term { CLR } else { "" }
-        )?;
 
         // Filter themes and collect names.
         let items = self
@@ -72,9 +75,10 @@ impl Themes {
             .enumerate()
             .collect::<Vec<(usize, &str)>>();
 
-        let mut line_len = 0;
         let max_idx = items.len() - 1;
-        let max_width = Tui::get_terminal_width() - 4;
+        let max_width = Self::get_terminal_width() - 4;
+
+        let mut line_len = 0;
 
         for (idx, name) in items {
             // Update line length; add 2 for the ", " separator.
@@ -107,11 +111,10 @@ impl Themes {
             }
         }
 
-        if is_term {
-            writeln!(&mut out, "\n")?;
-        }
+        writeln!(&mut out)?;
 
         out.flush()?;
+
         Ok(ExitCode::SUCCESS)
     }
 
@@ -199,7 +202,9 @@ impl Hash for Theme {
 }
 impl From<(&'static str, &[u8])> for Theme {
     fn from((name, bytes): (&'static str, &[u8])) -> Self {
-        assert_eq!(bytes.len(), 57);
+        if bytes.len() != 57 {
+            fail!("Unable to initialize the built-in themes");
+        }
 
         Self {
             color0: Rgb::from(&bytes[9..=11]),
@@ -275,12 +280,6 @@ color13={}\ncolor14={}\ncolor15={}\nbackground={}\nforeground={}\ncursor={}\n",
 
         let mut out = BufWriter::new(stdout);
 
-        if is_term {
-            writeln!(&mut out, "{GRN}{}:{CLR}", self.name)?;
-        } else {
-            writeln!(&mut out, "{}:", self.name)?;
-        }
-
         self.color0.print(&mut out, "color0", is_term)?;
         self.color1.print(&mut out, "color1", is_term)?;
         self.color2.print(&mut out, "color2", is_term)?;
@@ -302,6 +301,7 @@ color13={}\ncolor14={}\ncolor15={}\nbackground={}\nforeground={}\ncursor={}\n",
         self.background.print(&mut out, "background", is_term)?;
 
         out.flush()?;
+
         Ok(())
     }
 }
@@ -325,7 +325,9 @@ impl Display for Rgb {
 
 impl From<&[u8]> for Rgb {
     fn from(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), 3);
+        if bytes.len() != 3 {
+            fail!("Unable to initialize built-in themes data");
+        }
 
         Self {
             r: bytes[0],
@@ -338,6 +340,7 @@ impl From<&[u8]> for Rgb {
 impl Rgb {
     /// Calculates the perceived brightness from the RGB value and returns
     /// true if it is considered dark.
+    //
     // See: https://www.nbdtech.com/Blog/archive/2008/04/27/Calculating-the-
     // Perceived-Brightness-of-a-Color.aspx
     pub fn is_dark(self) -> bool {
@@ -355,16 +358,19 @@ impl Rgb {
         name: &str,
         is_terminal: bool
     ) -> IoResult<()> {
+        assert!(name.len() <= 12);
+
         let dots = "............";
+        let dots_slice = &dots[..(12 - name.len())];
 
         if is_terminal {
-            write!(out, "{BLUE}{name}{CLR}{}", &dots[..(12 - name.len())])?;
-            write!(out, "{CYAN}{self}{CLR} ")?;
+            write!(out, "{BLUE}{name}{CLR}{dots_slice}{CYAN}{self}{CLR} ")?;
             writeln!(out, "\x1b[48;2;{};{};{}m  {CLR}", self.r, self.g, self.b)?;
         } else {
-            writeln!(out, "{name}{}{self}", &dots[..(12 - name.len())])?;
+            writeln!(out, "{name}{dots_slice}{self}")?;
         }
 
         Ok(())
     }
 }
+
